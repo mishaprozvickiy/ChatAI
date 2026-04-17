@@ -62,7 +62,8 @@ const loadHistory = async () => {
         chatBox.innerHTML = '';
 
         if (history.length === 0) {
-            appendMessage('ai', 'Здравствуйте. Я готов к работе.');
+            const now = new Date().toISOString();
+            appendMessage('assistant', 'Здравствуйте. Я готов к работе.', now);
         } else {
             history.forEach(msg => {
                 appendMessage(msg.role, msg.message, msg.date);
@@ -70,7 +71,8 @@ const loadHistory = async () => {
         }
     } catch {
         chatBox.innerHTML = '';
-        appendMessage('ai', 'Здравствуйте. Я готов к работе.');
+        const now = new Date().toISOString();
+        appendMessage('assistant', 'Здравствуйте. Я готов к работе.', now);
     }
 };
 
@@ -86,7 +88,7 @@ const sendMessage = async () => {
     input.disabled = true;
     sendBtn.disabled = true;
 
-    const aiContent = appendMessage('ai', '', null, true);
+    const aiContent = appendMessage('assistant', '', null, true);
     let fullReply = '';
     let messageDate = null;
 
@@ -127,7 +129,7 @@ const sendMessage = async () => {
 
         if (messageDate) {
             const formattedDate = formatDateTime(messageDate);
-            const lastAiMessage = chatBox.querySelector('.message.ai:last-child');
+            const lastAiMessage = chatBox.querySelector('.message.assistant:last-child');
             if (lastAiMessage) {
                 const metaDiv = lastAiMessage.querySelector('.meta');
                 if (metaDiv && !metaDiv.querySelector('.datetime')) {
@@ -156,7 +158,8 @@ const clearHistory = async () => {
     try {
         await fetch(`${API_BASE}/clear`, { method: 'DELETE' });
         chatBox.innerHTML = '';
-        appendMessage('ai', 'Здравствуйте. Я готов к работе.');
+        const now = new Date().toISOString();
+        appendMessage('assistant', 'Здравствуйте. Я готов к работе.', now);
     } catch {
         alert('Не удалось очистить историю');
     }

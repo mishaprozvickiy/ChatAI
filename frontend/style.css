@@ -78,7 +78,7 @@ body {
     color: #1e40af;
 }
 
-.message.ai {
+.message.assistant {
     align-self: flex-start;
     background: var(--ai-bubble);
     border: 1px solid var(--border);
@@ -92,6 +92,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
 }
 
 .meta .role-name {
