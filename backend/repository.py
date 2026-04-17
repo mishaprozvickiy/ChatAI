@@ -30,6 +30,9 @@ class MessageRepository:
             yield part_answer
             answer += part_answer
 
+        date = datetime.now()
+        yield f"\n[DATE:{date}]"
+
         async with new_session() as session:
             date = datetime.now()
             message_model = MessageOrm(role="assistant", message=answer, date=date)

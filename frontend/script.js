@@ -5,20 +5,50 @@ const input = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 const clearBtn = document.getElementById('clearBtn');
 
-const escapeHtml = (text) =>
-    text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const escapeHtml = (text) => {
+    if (!text) return '';
+    return text.replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[m]));
+};
 
 const scrollToBottom = () => {
     chatBox.scrollTop = chatBox.scrollHeight;
 };
 
-const appendMessage = (role, text, isStreaming = false) => {
+const formatDateTime = (isoString) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+};
+
+const appendMessage = (role, text, dateStr = null, isStreaming = false) => {
     const div = document.createElement('div');
     div.className = `message ${role}`;
+
+    const formattedDate = dateStr ? formatDateTime(dateStr) : '';
+
     div.innerHTML = `
-        <div class="meta">${role === 'user' ? 'Вы' : 'ChatAI'}</div>
+        <div class="meta">
+            <span class="role-name">${role === 'user' ? 'Вы' : 'ChatAI'}</span>
+            ${formattedDate ? `<span class="datetime">${formattedDate}</span>` : ''}
+        </div>
         <div class="content${isStreaming ? ' typing' : ''}">${escapeHtml(text)}</div>
     `;
+
+    if (isStreaming) div.querySelector('.content').classList.add('typing');
     chatBox.appendChild(div);
     scrollToBottom();
     return div.querySelector('.content');
@@ -30,10 +60,13 @@ const loadHistory = async () => {
         if (!res.ok) throw new Error();
         const history = await res.json();
         chatBox.innerHTML = '';
+
         if (history.length === 0) {
             appendMessage('ai', 'Здравствуйте. Я готов к работе.');
         } else {
-            history.forEach(msg => appendMessage(msg.role, msg.message));
+            history.forEach(msg => {
+                appendMessage(msg.role, msg.message, msg.date);
+            });
         }
     } catch {
         chatBox.innerHTML = '';
@@ -46,12 +79,16 @@ const sendMessage = async () => {
     if (!text) return;
 
     input.value = '';
-    appendMessage('user', text);
+
+    const now = new Date().toISOString();
+    appendMessage('user', text, now);
+
     input.disabled = true;
     sendBtn.disabled = true;
 
-    const aiContent = appendMessage('ai', '', true);
+    const aiContent = appendMessage('ai', '', null, true);
     let fullReply = '';
+    let messageDate = null;
 
     try {
         const res = await fetch(`${API_BASE}/chat`, {
@@ -71,12 +108,39 @@ const sendMessage = async () => {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+
             const chunk = decoder.decode(value, { stream: true });
-            fullReply += chunk;
-            aiContent.textContent = fullReply;
+
+            const dateMatch = chunk.match(/\[DATE:(.+?)\]/);
+            if (dateMatch) {
+                messageDate = dateMatch[1];
+                const cleanChunk = chunk.replace(/\[DATE:.+?\]/, '');
+                fullReply += cleanChunk;
+                aiContent.textContent = fullReply;
+            } else {
+                fullReply += chunk;
+                aiContent.textContent = fullReply;
+            }
+
             scrollToBottom();
         }
+
+        if (messageDate) {
+            const formattedDate = formatDateTime(messageDate);
+            const lastAiMessage = chatBox.querySelector('.message.ai:last-child');
+            if (lastAiMessage) {
+                const metaDiv = lastAiMessage.querySelector('.meta');
+                if (metaDiv && !metaDiv.querySelector('.datetime')) {
+                    const timeSpan = document.createElement('span');
+                    timeSpan.className = 'datetime';
+                    timeSpan.textContent = formattedDate;
+                    metaDiv.appendChild(timeSpan);
+                }
+            }
+        }
+
         aiContent.classList.remove('typing');
+
     } catch (err) {
         aiContent.textContent = `Ошибка: ${err.message}`;
         aiContent.style.color = '#dc2626';
