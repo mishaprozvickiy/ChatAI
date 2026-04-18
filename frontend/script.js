@@ -60,19 +60,13 @@ const loadHistory = async () => {
         if (!res.ok) throw new Error();
         const history = await res.json();
         chatBox.innerHTML = '';
-
-        if (history.length === 0) {
-            const now = new Date().toISOString();
-            appendMessage('assistant', 'Здравствуйте. Я готов к работе.', now);
-        } else {
-            history.forEach(msg => {
-                appendMessage(msg.role, msg.message, msg.date);
-            });
-        }
+        history.forEach(msg => {
+            appendMessage(msg.role, msg.message, msg.date);
+        });
     } catch {
         chatBox.innerHTML = '';
         const now = new Date().toISOString();
-        appendMessage('assistant', 'Здравствуйте. Я готов к работе.', now);
+        appendMessage('assistant', 'Ошибка загрузки истории. Попробуйте обновить страницу.', now);
     }
 };
 
@@ -158,8 +152,7 @@ const clearHistory = async () => {
     try {
         await fetch(`${API_BASE}/clear`, { method: 'DELETE' });
         chatBox.innerHTML = '';
-        const now = new Date().toISOString();
-        appendMessage('assistant', 'Здравствуйте. Я готов к работе.', now);
+        await loadHistory();
     } catch {
         alert('Не удалось очистить историю');
     }

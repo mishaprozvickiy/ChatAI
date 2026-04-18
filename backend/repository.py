@@ -1,6 +1,6 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, exists
 from datetime import datetime
-from database import MessageOrm, new_session
+from database import MessageOrm, new_session, create_table
 from schema import SMessage
 from bot import chatbot
 from typing import AsyncGenerator
@@ -44,3 +44,18 @@ class MessageRepository:
         async with new_session() as session:
             await session.execute(delete(MessageOrm))
             await session.commit()
+            await cls.add_first_message()
+
+    @classmethod
+    async def add_first_message(cls):
+        async with new_session() as session:
+            query = select(exists().where(MessageOrm.id.is_not(None)))
+            result = await session.execute(query)
+            has_records = result.scalar()
+            first_message = "Привет! Чем могу помочь?"
+            date = datetime.now()
+            message_model = MessageOrm(role="assistant", message=first_message, date=date)
+
+            if not has_records:
+                session.add(message_model)
+                await session.commit()

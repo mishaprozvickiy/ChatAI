@@ -3,11 +3,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import create_table
+from repository import MessageRepository
 import uvicorn
 
 @asynccontextmanager
 async def lifespan(api: FastAPI):
     await create_table()
+    await MessageRepository.add_first_message()
     yield
 
 app = FastAPI(lifespan=lifespan)
