@@ -40,15 +40,27 @@ const appendMessage = (role, text, dateStr = null, isStreaming = false) => {
 
     const formattedDate = dateStr ? formatDateTime(dateStr) : '';
 
+    let contentHtml = '';
+    if (isStreaming && !text) {
+        contentHtml = `
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+    } else {
+        contentHtml = escapeHtml(text);
+    }
+
     div.innerHTML = `
         <div class="meta">
             <span class="role-name">${role === 'user' ? 'Вы' : 'ChatAI'}</span>
             ${formattedDate ? `<span class="datetime">${formattedDate}</span>` : ''}
         </div>
-        <div class="content${isStreaming ? ' typing' : ''}">${escapeHtml(text)}</div>
+        <div class="content">${contentHtml}</div>
     `;
 
-    if (isStreaming) div.querySelector('.content').classList.add('typing');
     chatBox.appendChild(div);
     scrollToBottom();
     return div.querySelector('.content');
@@ -60,9 +72,11 @@ const loadHistory = async () => {
         if (!res.ok) throw new Error();
         const history = await res.json();
         chatBox.innerHTML = '';
+
         history.forEach(msg => {
             appendMessage(msg.role, msg.message, msg.date);
         });
+
     } catch {
         chatBox.innerHTML = '';
         const now = new Date().toISOString();
@@ -82,9 +96,10 @@ const sendMessage = async () => {
     input.disabled = true;
     sendBtn.disabled = true;
 
-    const aiContent = appendMessage('assistant', '', null, true);
+    const assistantContent = appendMessage('assistant', '', null, true);
     let fullReply = '';
     let messageDate = null;
+    let isFirstToken = true;
 
     try {
         const res = await fetch(`${API_BASE}/chat`, {
@@ -108,24 +123,30 @@ const sendMessage = async () => {
             const chunk = decoder.decode(value, { stream: true });
 
             const dateMatch = chunk.match(/\[DATE:(.+?)\]/);
+            let textChunk = chunk;
+
             if (dateMatch) {
                 messageDate = dateMatch[1];
-                const cleanChunk = chunk.replace(/\[DATE:.+?\]/, '');
-                fullReply += cleanChunk;
-                aiContent.textContent = fullReply;
-            } else {
-                fullReply += chunk;
-                aiContent.textContent = fullReply;
+                textChunk = chunk.replace(/\[DATE:.+?\]/, '');
             }
 
-            scrollToBottom();
+            if (textChunk) {
+                if (isFirstToken) {
+                    assistantContent.innerHTML = '';
+                    isFirstToken = false;
+                }
+
+                fullReply += textChunk;
+                assistantContent.textContent = fullReply;
+                scrollToBottom();
+            }
         }
 
         if (messageDate) {
             const formattedDate = formatDateTime(messageDate);
-            const lastAiMessage = chatBox.querySelector('.message.assistant:last-child');
-            if (lastAiMessage) {
-                const metaDiv = lastAiMessage.querySelector('.meta');
+            const lastAssistantMessage = chatBox.querySelector('.message.assistant:last-child');
+            if (lastAssistantMessage) {
+                const metaDiv = lastAssistantMessage.querySelector('.meta');
                 if (metaDiv && !metaDiv.querySelector('.datetime')) {
                     const timeSpan = document.createElement('span');
                     timeSpan.className = 'datetime';
@@ -135,11 +156,8 @@ const sendMessage = async () => {
             }
         }
 
-        aiContent.classList.remove('typing');
-
     } catch (err) {
-        aiContent.textContent = `Ошибка: ${err.message}`;
-        aiContent.style.color = '#dc2626';
+        assistantContent.innerHTML = `<span style="color: #dc2626;">Ошибка: ${err.message}</span>`;
     } finally {
         input.disabled = false;
         sendBtn.disabled = false;
