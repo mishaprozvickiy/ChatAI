@@ -3,6 +3,7 @@ from datetime import datetime
 from database import MessageOrm, new_session
 from schema import SMessage
 from bot import chatbot
+from config import FIRST_BOT_MESSAGE
 from typing import AsyncGenerator
 
 
@@ -52,9 +53,8 @@ class MessageRepository:
             query = select(exists().where(MessageOrm.id.is_not(None)))
             result = await session.execute(query)
             has_records = result.scalar()
-            first_message = "Привет! Чем могу помочь?"
             date = datetime.now()
-            message_model = MessageOrm(role="assistant", message=first_message, date=date)
+            message_model = MessageOrm(role="assistant", message=FIRST_BOT_MESSAGE, date=date)
 
             if not has_records:
                 session.add(message_model)

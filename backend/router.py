@@ -18,4 +18,4 @@ async def add_message(message: SMessageAdd) -> StreamingResponse:
 @router.delete("/clear")
 async def delete_chat() -> SStatusOk:
     await MessageRepository.delete_chat()
-    return {"status": "ok"}
+    return SStatusOk()

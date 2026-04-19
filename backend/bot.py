@@ -1,11 +1,12 @@
 import ollama
 from typing import Generator
+from config import MODEL, SYSTEM_PROMPT
 
 
 class ChatBot:
-    def __init__(self, model: str = "qwen2.5:7b"):
-        self.model = model
-        self.system_prompt = "Ты полезный ассистент. Тебя зовут ChatAI. Отвечай по делу и на русском языке."
+    def __init__(self):
+        self.model = MODEL
+        self.system_prompt = SYSTEM_PROMPT
         self.history: list[dict[str, str]] = []
 
     def ask(self, message: str) -> Generator[str, None, None]:

@@ -3,8 +3,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Enum
 from datetime import datetime
 from schema import RoleEnum
+from config import DB_URL
 
-engine = create_async_engine("sqlite+aiosqlite:///messages.db")
+engine = create_async_engine(DB_URL)
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
