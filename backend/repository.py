@@ -1,6 +1,6 @@
 from sqlalchemy import select, delete, exists
 from datetime import datetime
-from database import MessageOrm, new_session, create_table
+from database import MessageOrm, new_session
 from schema import SMessage
 from bot import chatbot
 from typing import AsyncGenerator
@@ -8,7 +8,7 @@ from typing import AsyncGenerator
 
 class MessageRepository:
     @classmethod
-    async def get_history(cls) -> list[dict]:
+    async def get_history(cls) -> list[SMessage]:
         async with new_session() as session:
             query = select(MessageOrm)
             messages = await session.execute(query)
@@ -47,7 +47,7 @@ class MessageRepository:
             await cls.add_first_message()
 
     @classmethod
-    async def add_first_message(cls):
+    async def add_first_message(cls) -> None:
         async with new_session() as session:
             query = select(exists().where(MessageOrm.id.is_not(None)))
             result = await session.execute(query)
