@@ -2,14 +2,14 @@ from router import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from database import create_table
-from repository import MessageRepository
+from database import create_tables
+from repositories.message import MessageRepository
 from config import CORS, PORT
 import uvicorn
 
 @asynccontextmanager
 async def lifespan(api: FastAPI):
-    await create_table()
+    await create_tables()
     await MessageRepository.add_first_message()
     yield
 

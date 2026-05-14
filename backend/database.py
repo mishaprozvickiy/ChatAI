@@ -1,8 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import Enum
-from datetime import datetime
-from schema import RoleEnum
+from sqlalchemy.orm import DeclarativeBase
 from config import DB_URL
 
 engine = create_async_engine(DB_URL)
@@ -13,14 +10,10 @@ class Model(DeclarativeBase):
     ...
 
 
-class MessageOrm(Model):
-    __tablename__ = "messages"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    role: Mapped[str] = mapped_column(Enum(RoleEnum))
-    message: Mapped[str]
-    date: Mapped[datetime]
-
-
-async def create_table():
+async def create_tables():
     async with engine.begin() as connection:
         await connection.run_sync(Model.metadata.create_all)
+
+async def drop_tables():
+    async with engine.begin() as connection:
+        await connection.run_sync(Model.metadata.drop_all)
