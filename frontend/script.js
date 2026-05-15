@@ -1,188 +1,175 @@
-const API_BASE = 'http://localhost:8001/api';
-
+const API = 'http://localhost:8001';
 const chatBox = document.getElementById('chatBox');
 const input = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
-const clearBtn = document.getElementById('clearBtn');
+const authPanel = document.getElementById('authPanel');
 
-const escapeHtml = (text) => {
-    if (!text) return '';
-    return text.replace(/[&<>"']/g, m => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-    }[m]));
+let isLoggedIn = false;
+let username = '';
+
+const esc = t => t ? t.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
+const scroll = () => chatBox.scrollTop = chatBox.scrollHeight;
+const fmtDate = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d) ? '' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 };
 
-const scrollToBottom = () => {
-    chatBox.scrollTop = chatBox.scrollHeight;
+const fetchWithRetry = async (url, opts = {}) => {
+    let res = await fetch(`${API}${url}`, { credentials: 'include', ...opts });
+
+    if (res.status === 401) {
+        try {
+            const refreshRes = await fetch(`${API}/auth/refresh`, { method: 'POST', credentials: 'include' });
+            if (refreshRes.ok) {
+                return await fetch(`${API}${url}`, { credentials: 'include', ...opts });
+            } else {
+                handleLogout(false);
+                throw new Error('Сессия истекла');
+            }
+        } catch {
+            handleLogout(false);
+            throw new Error('Не авторизован');
+        }
+    }
+    return res;
 };
 
-const formatDateTime = (isoString) => {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return '';
-
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
+const apiCall = async (url, opts = {}) => {
+    const res = await fetchWithRetry(url, opts);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Ошибка');
+    return res.json();
 };
 
-const appendMessage = (role, text, dateStr = null, isStreaming = false) => {
+const renderAuthPanel = () => {
+    if (isLoggedIn) {
+        authPanel.innerHTML = `
+            <span style="font-weight:500;margin-right:8px;">${esc(username)}</span>
+            <button id="logoutBtn" class="btn-secondary">Выйти</button>
+        `;
+        document.getElementById('logoutBtn').onclick = handleLogout;
+        enableChat(true);
+    } else {
+        authPanel.innerHTML = `
+            <button onclick="window.location.href='auth.html?mode=login'" class="btn-secondary">Войти</button>
+            <button onclick="window.location.href='auth.html?mode=register'" class="btn-primary">Создать аккаунт</button>
+        `;
+        enableChat(false);
+    }
+};
+
+const enableChat = (on) => {
+    input.disabled = !on;
+    sendBtn.disabled = !on;
+    input.placeholder = on ? 'Введите сообщение...' : 'Войдите, чтобы начать чат...';
+};
+
+const handleLogout = async (notify = true) => {
+    try { await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }); } catch {}
+    isLoggedIn = false;
+    username = '';
+    chatBox.innerHTML = '';
+    renderAuthPanel();
+    if (notify) alert('Вы вышли из аккаунта');
+};
+
+const checkSession = async () => {
+    try {
+        const data = await apiCall('/auth/me');
+        isLoggedIn = true;
+        username = data.username;
+        loadHistory();
+    } catch {
+        isLoggedIn = false;
+        username = '';
+    }
+    renderAuthPanel();
+};
+
+const appendMsg = (role, text, dateStr = null, isStreaming = false) => {
     const div = document.createElement('div');
     div.className = `message ${role}`;
-
-    const formattedDate = dateStr ? formatDateTime(dateStr) : '';
-
-    let contentHtml = '';
+    const dt = dateStr ? fmtDate(dateStr) : '';
+    let html = '';
     if (isStreaming && !text) {
-        contentHtml = `
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        `;
+        html = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
     } else {
-        contentHtml = escapeHtml(text);
+        html = esc(text);
     }
-
-    div.innerHTML = `
-        <div class="meta">
-            <span class="role-name">${role === 'user' ? 'Вы' : 'ChatAI'}</span>
-            ${formattedDate ? `<span class="datetime">${formattedDate}</span>` : ''}
-        </div>
-        <div class="content">${contentHtml}</div>
-    `;
-
+    div.innerHTML = `<div class="meta"><span>${role==='user'?'Вы':'ChatAI'}</span>${dt?`<span class="datetime">${dt}</span>`:''}</div><div class="content">${html}</div>`;
     chatBox.appendChild(div);
-    scrollToBottom();
+    scroll();
     return div.querySelector('.content');
 };
 
 const loadHistory = async () => {
     try {
-        const res = await fetch(`${API_BASE}/history`);
-        if (!res.ok) throw new Error();
-        const history = await res.json();
+        const hist = await apiCall('/api/history');
         chatBox.innerHTML = '';
-
-        history.forEach(msg => {
-            appendMessage(msg.role, msg.message, msg.date);
-        });
-
+        hist.forEach(m => appendMsg(m.role, m.message, m.date));
     } catch {
         chatBox.innerHTML = '';
-        const now = new Date().toISOString();
-        appendMessage('assistant', 'Ошибка загрузки истории. Попробуйте обновить страницу.', now);
+        appendMsg('assistant', 'Не удалось загрузить историю.', new Date().toISOString());
     }
 };
 
 const sendMessage = async () => {
+    if (!isLoggedIn) return;
     const text = input.value.trim();
     if (!text) return;
 
     input.value = '';
+    appendMsg('user', text, new Date().toISOString());
+    input.disabled = true; sendBtn.disabled = true;
 
-    const now = new Date().toISOString();
-    appendMessage('user', text, now);
-
-    input.disabled = true;
-    sendBtn.disabled = true;
-
-    const assistantContent = appendMessage('assistant', '', null, true);
-    let fullReply = '';
-    let messageDate = null;
-    let isFirstToken = true;
+    const aiEl = appendMsg('assistant', '', null, true);
+    let full = '', msgDate = null, first = true;
 
     try {
-        const res = await fetch(`${API_BASE}/chat`, {
-            method: 'POST',
+        let res = await fetch(`${API}/api/chat`, {
+            credentials: 'include', method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })
         });
 
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: 'Ошибка сервера' }));
-            throw new Error(err.error || 'Network error');
+        if (res.status === 401) {
+            await fetchWithRetry('/auth/refresh', { method: 'POST' });
+            return sendMessage();
         }
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Network error');
 
         const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-
+        const dec = new TextDecoder();
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-
-            const dateMatch = chunk.match(/\[DATE:(.+?)\]/);
-            let textChunk = chunk;
-
-            if (dateMatch) {
-                messageDate = dateMatch[1];
-                textChunk = chunk.replace(/\[DATE:.+?\]/, '');
-            }
-
-            if (textChunk) {
-                if (isFirstToken) {
-                    assistantContent.innerHTML = '';
-                    isFirstToken = false;
-                }
-
-                fullReply += textChunk;
-                assistantContent.textContent = fullReply;
-                scrollToBottom();
+            const chunk = dec.decode(value, { stream: true });
+            const m = chunk.match(/\[DATE:(.+?)\]/);
+            let txt = chunk;
+            if (m) { msgDate = m[1]; txt = chunk.replace(/\[DATE:.+?\]/, ''); }
+            if (txt) {
+                if (first) { aiEl.innerHTML = ''; first = false; }
+                full += txt;
+                aiEl.textContent = full;
+                scroll();
             }
         }
-
-        if (messageDate) {
-            const formattedDate = formatDateTime(messageDate);
-            const lastAssistantMessage = chatBox.querySelector('.message.assistant:last-child');
-            if (lastAssistantMessage) {
-                const metaDiv = lastAssistantMessage.querySelector('.meta');
-                if (metaDiv && !metaDiv.querySelector('.datetime')) {
-                    const timeSpan = document.createElement('span');
-                    timeSpan.className = 'datetime';
-                    timeSpan.textContent = formattedDate;
-                    metaDiv.appendChild(timeSpan);
-                }
+        if (msgDate) {
+            const last = chatBox.querySelector('.message.assistant:last-child');
+            if (last && !last.querySelector('.datetime')) {
+                const s = document.createElement('span');
+                s.className = 'datetime'; s.textContent = fmtDate(msgDate);
+                last.querySelector('.meta').appendChild(s);
             }
         }
-
-    } catch (err) {
-        assistantContent.innerHTML = `<span style="color: #dc2626;">Ошибка: ${err.message}</span>`;
+    } catch (e) {
+        aiEl.innerHTML = `<span style="color:#dc2626">Ошибка: ${e.message}</span>`;
     } finally {
-        input.disabled = false;
-        sendBtn.disabled = false;
-        input.focus();
+        input.disabled = false; sendBtn.disabled = false; input.focus();
     }
 };
 
-const clearHistory = async () => {
-    if (!confirm('Удалить историю диалога?')) return;
-    try {
-        await fetch(`${API_BASE}/clear`, { method: 'DELETE' });
-        chatBox.innerHTML = '';
-        await loadHistory();
-    } catch {
-        alert('Не удалось очистить историю');
-    }
-};
+sendBtn.onclick = sendMessage;
+input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 
-sendBtn.addEventListener('click', sendMessage);
-clearBtn.addEventListener('click', clearHistory);
-input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
-
-window.addEventListener('DOMContentLoaded', loadHistory);
+checkSession();

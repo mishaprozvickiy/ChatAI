@@ -14,6 +14,7 @@ class SMessageAdd(BaseModel):
 
 class SMessage(SMessageAdd):
     id: int
+    user_id: int
     role: RoleEnum
     date: datetime
 

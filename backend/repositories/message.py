@@ -10,19 +10,19 @@ from typing import AsyncGenerator
 
 class MessageRepository:
     @classmethod
-    async def get_history(cls) -> list[SMessage]:
+    async def get_history(cls, user_id: int) -> list[SMessage]:
         async with new_session() as session:
-            query = select(MessageOrm)
+            query = select(MessageOrm).where(MessageOrm.user_id == user_id)
             messages = await session.execute(query)
             message_models = messages.scalars().all()
             message_schemas = [SMessage.model_validate(message).model_dump() for message in message_models]
             return message_schemas
 
     @classmethod
-    async def add_message(cls, message: str) -> AsyncGenerator[str, None]:
+    async def add_message(cls, message: str, user_id: int) -> AsyncGenerator[str, None]:
         async with new_session() as session:
             date = datetime.now()
-            message_model = MessageOrm(role="user", message=message, date=date)
+            message_model = MessageOrm(user_id=user_id, role="user", message=message, date=date)
             session.add(message_model)
             await session.commit()
 
@@ -37,16 +37,18 @@ class MessageRepository:
 
         async with new_session() as session:
             date = datetime.now()
-            message_model = MessageOrm(role="assistant", message=answer, date=date)
+            message_model = MessageOrm(user_id=user_id, role="assistant", message=answer, date=date)
             session.add(message_model)
             await session.commit()
 
     @classmethod
-    async def delete_chat(cls) -> None:
+    async def delete_chat(cls, user_id: int) -> dict:
         async with new_session() as session:
-            await session.execute(delete(MessageOrm))
+            query = delete(MessageOrm).where(MessageOrm.user_id == user_id)
+            await session.execute(query)
             await session.commit()
             await cls.add_first_message()
+            return {"status": "ok"}
 
     @classmethod
     async def add_first_message(cls) -> None:

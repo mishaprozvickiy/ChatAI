@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatAI - Авторизация</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h2 id="authTitle">Вход</h2>
+            <input type="text" id="usernameInput" placeholder="Имя пользователя" autocomplete="username">
+            <input type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
+            <div class="auth-actions">
+                <button id="authSubmitBtn" class="btn-primary">Войти</button>
+                <button class="btn-secondary" onclick="window.location.href='index.html'">Назад</button>
+            </div>
+            <p id="authMessage" class="auth-msg"></p>
+        </div>
+    </div>
+    <script src="auth.js"></script>
+</body>
+</html>

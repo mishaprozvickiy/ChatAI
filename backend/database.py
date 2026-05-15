@@ -17,3 +17,7 @@ async def create_tables():
 async def drop_tables():
     async with engine.begin() as connection:
         await connection.run_sync(Model.metadata.drop_all)
+
+async def get_session():
+    async with new_session() as session:
+        yield session

@@ -10,13 +10,15 @@
     <div class="app-container">
         <header class="app-header">
             <h1>ChatAI</h1>
-            <button id="clearBtn" class="btn-secondary">Очистить историю</button>
+            <div id="authPanel" class="auth-panel"></div>
         </header>
-        <main id="chatBox" class="chat-area"></main>
-        <footer class="input-area">
-            <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+
+        <main class="chat-area" id="chatBox"></main>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Введите сообщение...">
             <button id="sendBtn" class="btn-primary">Отправить</button>
-        </footer>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
