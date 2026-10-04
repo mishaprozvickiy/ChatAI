@@ -2,7 +2,7 @@ from router import router
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from database import create_tables
+from database import create_tables, new_session
 from repositories.message import MessageRepository
 from config import CORS, PORT, MISSING_TOKEN_EXCEPTION
 from authx.exceptions import AuthXException
@@ -11,7 +11,7 @@ import uvicorn
 @asynccontextmanager
 async def lifespan(api: FastAPI):
     await create_tables()
-    # await MessageRepository.add_first_message()
+    await MessageRepository.add_first_message(new_session)
     yield
 
 app = FastAPI(lifespan=lifespan)

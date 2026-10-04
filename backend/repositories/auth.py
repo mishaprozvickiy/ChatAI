@@ -16,6 +16,7 @@ class AuthRepository:
             response: Response,
             session: AsyncSession
     ) -> dict:
+
         query = select(UserOrm).where(UserOrm.username == credentials.username)
         result = await session.execute(query)
         user_model = result.scalar_one_or_none()
@@ -45,6 +46,7 @@ class AuthRepository:
             response: Response,
             session: AsyncSession
     ) -> dict:
+
         query = select(UserOrm).where(UserOrm.username == credentials.username)
         result = await session.execute(query)
         user_model = result.scalar_one_or_none()
@@ -68,7 +70,12 @@ class AuthRepository:
         return {"status": "ok"}
 
     @classmethod
-    async def check(cls, user_id: int, session: AsyncSession) -> dict:
+    async def check(
+            cls,
+            user_id: int,
+            session: AsyncSession
+    ) -> dict:
+
         query = select(UserOrm.username).where(UserOrm.id == user_id)
         result = await session.execute(query)
         username = result.scalar_one()

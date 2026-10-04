@@ -14,6 +14,7 @@ async def register(
         response: Response,
         session: AsyncSession = Depends(get_session)
 ) -> dict:
+
     response = await AuthRepository.register(credentials, response, session)
     return response
 
@@ -23,11 +24,15 @@ async def login(
         response: Response,
         session: AsyncSession = Depends(get_session)
 ) -> dict:
+
     response = await AuthRepository.login(credentials, response, session)
     return response
 
 @router.post("/logout")
-async def logout(response: Response) -> dict:
+async def logout(
+        response: Response
+) -> dict:
+
     security.unset_access_cookies(response)
     security.unset_refresh_cookies(response)
     return {"status": "ok"}
@@ -37,6 +42,7 @@ async def refresh(
         response: Response,
         token_payload: TokenPayload = Depends(security.refresh_token_required)
 ) -> dict:
+
     user_id = token_payload.sub
     new_access_token = AuthService.refresh_access_token(user_id)
     security.set_access_cookies(new_access_token, response)
@@ -47,6 +53,7 @@ async def check_auth(
         token_payload: TokenPayload = Depends(security.access_token_required),
         session: AsyncSession = Depends(get_session)
 ) -> dict:
+
     user_id = int(token_payload.sub)
     response = await AuthRepository.check(user_id, session)
     return response
