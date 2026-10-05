@@ -1,3 +1,4 @@
+import os
 from fastapi import HTTPException
 
 SYSTEM_PROMPT = "Ты полезный ассистент. " \
@@ -5,6 +6,7 @@ SYSTEM_PROMPT = "Ты полезный ассистент. " \
                 "Отвечай по делу и на русском языке."
 
 MODEL = "qwen2.5:7b"
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 FIRST_BOT_MESSAGE = "Привет! Чем могу помочь?"
 
 CORS = [

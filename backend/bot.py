@@ -1,6 +1,6 @@
 from ollama import AsyncClient
 from typing import AsyncGenerator
-from config import MODEL, SYSTEM_PROMPT
+from config import MODEL, OLLAMA_HOST, SYSTEM_PROMPT
 
 
 class ChatBot:
@@ -12,7 +12,7 @@ class ChatBot:
     async def ask(self, message: str) -> AsyncGenerator[str, None]:
         self.history.append({"role": "user", "content": message})
         messages = [{"role": "system", "content": self.system_prompt}] + self.history
-        client = AsyncClient()
+        client = AsyncClient(host=OLLAMA_HOST)
         response = await client.chat(model=self.model, messages=messages, stream=True)
         assistant_reply = ""
 
