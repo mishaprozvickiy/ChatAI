@@ -7,6 +7,7 @@ class ChatBot:
     def __init__(self):
         self.model = MODEL
         self.system_prompt = SYSTEM_PROMPT
+        # TODO: self.history должен получать историю сообщений пользователя из бд, пока что вся история общая для всех
         self.history: list[dict[str, str]] = []
 
     async def ask(self, message: str) -> AsyncGenerator[str, None]:

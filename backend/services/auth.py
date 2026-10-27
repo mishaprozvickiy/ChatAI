@@ -1,11 +1,10 @@
-from config import ACCESS_TOKEN_LIFESPAN_MINUTES, REFRESH_TOKEN_LIFESPAN_DAYS
-from settings import settings
+from config import JWT_SECRET, ACCESS_TOKEN_LIFESPAN_MINUTES, REFRESH_TOKEN_LIFESPAN_DAYS
 from authx import AuthX, AuthXConfig
 from datetime import timedelta
 
 config = AuthXConfig()
 
-config.JWT_SECRET_KEY = settings.jwt_secret_key
+config.JWT_SECRET_KEY = JWT_SECRET
 config.JWT_TOKEN_LOCATION = ["cookies"]
 
 config.JWT_ACCESS_COOKIE_NAME = "access_token"

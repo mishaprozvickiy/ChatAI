@@ -1,4 +1,12 @@
-const API = 'http://localhost:8001';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+let BASE_URL;
+
+if (isLocalhost) {
+    BASE_URL = 'http://localhost:8001';
+} else {
+    BASE_URL = `${window.location.protocol}//${window.location.hostname}:8001`;
+}
+
 const chatBox = document.getElementById('chatBox');
 const input = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -16,13 +24,13 @@ const fmtDate = iso => {
 };
 
 const fetchWithRetry = async (url, opts = {}) => {
-    let res = await fetch(`${API}${url}`, { credentials: 'include', ...opts });
+    let res = await fetch(`${BASE_URL}${url}`, { credentials: 'include', ...opts });
 
     if (res.status === 401) {
         try {
-            const refreshRes = await fetch(`${API}/auth/refresh`, { method: 'POST', credentials: 'include' });
+            const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
             if (refreshRes.ok) {
-                return await fetch(`${API}${url}`, { credentials: 'include', ...opts });
+                return await fetch(`${BASE_URL}${url}`, { credentials: 'include', ...opts });
             } else {
                 handleLogout(false);
                 throw new Error('Сессия истекла');
@@ -65,7 +73,7 @@ const enableChat = (on) => {
 };
 
 const handleLogout = async (notify = true) => {
-    try { await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }); } catch {}
+    try { await fetch(`${BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }); } catch {}
     isLoggedIn = false;
     username = '';
     chatBox.innerHTML = '';
@@ -126,7 +134,7 @@ const sendMessage = async () => {
     let full = '', msgDate = null, first = true;
 
     try {
-        let res = await fetch(`${API}/api/chat`, {
+        let res = await fetch(`${BASE_URL}/api/chat`, {
             credentials: 'include', method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })

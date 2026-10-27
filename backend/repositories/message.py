@@ -40,7 +40,7 @@ class MessageRepository:
 
         answer = ""
 
-        for part_answer in chatbot.ask(message):
+        async for part_answer in chatbot.ask(message):
             yield part_answer
             answer += part_answer
 

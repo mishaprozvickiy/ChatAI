@@ -1,0 +1,53 @@
+брать историю для нового запроса из бд
+auth.js и script.js имеют проблемные ссылки (они для localhost)
+проблема с MessageRepository.add_first_message - нам нужно передавать user_id в MessageOrm(role="assistant", message=FIRST_BOT_MESSAGE, date=date)
+бот работает не асинхронно, поэтому, когда 2 пользователя делают запрос, ответ будет получать только один, а второй будет ждать, пока первый не получит ответ
+реализовать вторую версию ChatAI с использованием сервиса какой-либо нейросети для получения быстрых ответов на запросы пользователей
+сменить БД с sqlite на postgresql и сделать выбор использования локальной БД и БД из контейнера (для деплоя сервиса)
+
+import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from openai import AsyncOpenAI
+
+app = FastAPI()
+
+# Инициализируем асинхронный клиент для OpenRouter
+# Рекомендуется прятать API-ключ в переменные окружения (.env)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "ВАШ_API_КЛЮЧ_ОТ_OPENROUTER")
+
+client = AsyncOpenAI(
+    base_url="https://openrouter.ai",
+    api_key=OPENROUTER_API_KEY,
+)
+
+# Модель для входящего запроса от фронтенда
+class UserRequest(BaseModel):
+    user_message: str
+
+@app.post("/api/chat")
+async def chat_with_assistant(request: UserRequest):
+    try:
+        # Отправляем запрос в облако
+        response = await client.chat.completions.create(
+            # Указываем нужную модель Qwen (например, актуальную Qwen 2.5 7B)
+            model="qwen/qwen-2.5-7b-instruct", 
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "Ты профессиональный ИИ-ассистент. Отвечай четко и по делу." # Ваш системный промпт
+                },
+                {
+                    "role": "user", 
+                    "content": request.user_message
+                }
+            ],
+            temperature=0.7, # Настройка креативности
+        )
+        
+        # Возвращаем сгенерированный ответ
+        return {"response": response.choices[0].message.content}
+
+    except Exception as e:
+        # Логируем ошибку, если что-то пошло не так (например, закончился баланс)
+        raise HTTPException(status_code=500, detail=f"Ошибка ИИ-сервиса: {str(e)}")

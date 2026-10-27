@@ -1,4 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    let AUTH_URL;
+
+    if (isLocalhost) {
+        AUTH_URL = 'http://localhost:8001/auth';
+    } else {
+        AUTH_URL = `${window.location.protocol}//${window.location.hostname}:8001/auth`;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode') === 'register' ? 'register' : 'login';
 
@@ -26,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.textContent = 'Загрузка...';
 
         try {
-            const res = await fetch(`http://localhost:8001/auth/${mode}`, {
+            const res = await fetch(`${AUTH_URL}/${mode}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

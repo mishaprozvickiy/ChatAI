@@ -1,0 +1,105 @@
+ChatAI/backend/Dockerfile:
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Копируем зависимости и устанавливаем их
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем весь код бэкенда
+COPY . .
+
+# Открываем порт, на котором uvicorn.run запускает приложение в main.py (обычно 8000)
+EXPOSE 8000
+
+# Запускаем скрипт
+CMD ["python", "main.py"]
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ChatAI/nginx.conf:
+# 1. ФРОНТЕНД на порту 8000
+server {
+    listen 8000;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# 2. БЭКЕНД на порту 8001 (перенаправляет в контейнер backend на внутренний порт 8000)
+server {
+    listen 8001;
+    server_name _;
+
+    location / {
+        proxy_pass http://backend_app:8000; # backend_app — имя сервиса из docker-compose, передаёт запрос в контейнер бэкенд приложения с метаданными изначального запроса пользователя (переданы ниже)
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ChatAI/docker-compose.yml:
+version: '3.8'
+
+services:
+  # Наш Python бэкенд
+  backend_app:
+    build: ./backend # собирает Dockerfile по пути ChatAI/backend
+    restart: always
+    # Порты наружу не пробрасываем (ports:), так как к нему будет обращаться только Nginx внутри сети Docker
+
+  # Наш веб-сервер Nginx
+  nginx_server:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "8000:8000" # Пробрасываем фронтенд наружу
+      - "8001:8001" # Пробрасываем бэкенд наружу
+    volumes:
+      # Впихиваем файлы фронтенда внутрь контейнера Nginx
+      - ./frontend:/usr/share/nginx/html
+      # Впихиваем наш кастомный конфиг вместо стандартного конфига Nginx
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend_app # nginx_server не запустится до тех пор, пока полностью не запустится контейнер backend_app
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+НАШ КОМП:
+ChatAI
+	frontend
+		index.html
+		style.css
+		script.js
+	backend
+		main.py
+		requirements.txt
+		Dockerfile
+		...
+	nginx.conf
+
+КОНТЕЙНЕР BACKEND_APP
+app
+	main.py
+	requirements.txt
+	Dockerfile
+	...
+
+КОНТЕЙНЕР NGINX_SERVER:
+usr
+	share
+		nginx
+			html
+				index.html
+				style.css
+				script.js
+etc
+	nginx
+		conf.d
+			default.conf (ChatAI/nginx.conf)
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+запуск: docker compose up -d --build (-d - detached, фоновый режим; --build - соберёт backend/Dockerfile)

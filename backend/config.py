@@ -9,14 +9,13 @@ MODEL = "qwen2.5:7b"
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 FIRST_BOT_MESSAGE = "Привет! Чем могу помочь?"
 
-CORS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
-]
+CORS = ["*"]
 
 PORT = 8001
 
-DB_URL = "sqlite+aiosqlite:///messages.db"
+DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///messages.db")
+
+JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 
 CREDS_EXCEPTION = HTTPException(status_code=401, detail="Incorrect login or password")
 MISSING_TOKEN_EXCEPTION = HTTPException(status_code=401, detail="Missing refresh or access token")
