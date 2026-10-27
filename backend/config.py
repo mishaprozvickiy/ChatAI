@@ -1,5 +1,8 @@
 import os
 from fastapi import HTTPException
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SYSTEM_PROMPT = "Ты полезный ассистент. " \
                 "Тебя зовут ChatAI. " \

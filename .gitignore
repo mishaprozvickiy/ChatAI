@@ -1,6 +1,9 @@
 .idea/
 __pycache__/
 *.db
-venv
-.venv
+venv/
+.venv/
 .env
+*.png
+*.txt
+!backend/requirements.txt
