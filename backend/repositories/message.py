@@ -1,11 +1,11 @@
-from sqlalchemy import select, delete, exists
+from sqlalchemy import select, delete, exists, RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from models.message import MessageOrm
 from schemas.message import SMessage
 from bot import chatbot
 from config import FIRST_BOT_MESSAGE
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Sequence
 
 
 class MessageRepository:
@@ -25,6 +25,19 @@ class MessageRepository:
         return message_schemas
 
     @classmethod
+    async def get_messages(
+            cls,
+            user_id: int,
+            session: AsyncSession
+    ) -> Sequence[RowMapping]:
+
+        query = select(MessageOrm.role, MessageOrm.message).where(MessageOrm.user_id == user_id)
+        result = await session.execute(query)
+        messages = result.mappings().all()
+
+        return messages
+
+    @classmethod
     async def add_message(
             cls,
             message: str,
@@ -38,9 +51,10 @@ class MessageRepository:
         session.add(message_model)
         await session.commit()
 
+        messages = await cls.get_messages(user_id, session)
         answer = ""
 
-        async for part_answer in chatbot.ask(message):
+        async for part_answer in chatbot.ask(messages):
             yield part_answer
             answer += part_answer
 
