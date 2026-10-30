@@ -1,11 +1,11 @@
-from sqlalchemy import select, delete, exists, RowMapping
+from sqlalchemy import select, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from models.message import MessageOrm
 from schemas.message import SMessage
 from bot import chatbot
 from config import FIRST_BOT_MESSAGE
-from typing import AsyncGenerator, Sequence
+from typing import AsyncGenerator, Any
 
 
 class MessageRepository:
@@ -29,11 +29,18 @@ class MessageRepository:
             cls,
             user_id: int,
             session: AsyncSession
-    ) -> Sequence[RowMapping]:
+    ) -> list[dict[str, Any]]:
 
-        query = select(MessageOrm.role, MessageOrm.message).where(MessageOrm.user_id == user_id)
+        query = select(MessageOrm.role, MessageOrm.content).where(MessageOrm.user_id == user_id)
         result = await session.execute(query)
-        messages = result.mappings().all()
+
+        messages = [
+            {
+                "role": row.role.value,
+                "content": row.content
+            }
+            for row in result.mappings().all()
+        ]
 
         return messages
 
@@ -46,7 +53,7 @@ class MessageRepository:
     ) -> AsyncGenerator[str, None]:
 
         date = datetime.now()
-        message_model = MessageOrm(user_id=user_id, role="user", message=message, date=date)
+        message_model = MessageOrm(user_id=user_id, role="user", content=message, date=date)
 
         session.add(message_model)
         await session.commit()
@@ -62,7 +69,7 @@ class MessageRepository:
         yield f"\n[DATE:{date}]"
 
         date = datetime.now()
-        message_model = MessageOrm(user_id=user_id, role="assistant", message=answer, date=date)
+        message_model = MessageOrm(user_id=user_id, role="assistant", content=answer, date=date)
 
         session.add(message_model)
         await session.commit()

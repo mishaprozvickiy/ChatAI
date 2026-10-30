@@ -11,5 +11,5 @@ class MessageOrm(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int]
     role: Mapped[str] = mapped_column(Enum(RoleEnum))
-    message: Mapped[str]
+    content: Mapped[str]
     date: Mapped[datetime]

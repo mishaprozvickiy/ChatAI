@@ -114,7 +114,7 @@ const loadHistory = async () => {
     try {
         const hist = await apiCall('/api/history');
         chatBox.innerHTML = '';
-        hist.forEach(m => appendMsg(m.role, m.message, m.date));
+        hist.forEach(m => appendMsg(m.role, m.content, m.date));
     } catch {
         chatBox.innerHTML = '';
         appendMsg('assistant', 'Не удалось загрузить историю.', new Date().toISOString());
@@ -137,7 +137,7 @@ const sendMessage = async () => {
         let res = await fetch(`${BASE_URL}/api/chat`, {
             credentials: 'include', method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text })
+            body: JSON.stringify({ content: text })
         });
 
         if (res.status === 401) {

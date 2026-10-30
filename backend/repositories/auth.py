@@ -1,4 +1,4 @@
-from fastapi import Response
+from fastapi import Response, HTTPException, status
 from schemas.user import SUser, SUserAdd
 from models.user import UserOrm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,6 +78,9 @@ class AuthRepository:
 
         query = select(UserOrm.username).where(UserOrm.id == user_id)
         result = await session.execute(query)
-        username = result.scalar_one()
+        username = result.scalar_one_or_none()
+
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         return {"status": "ok", "username": username}

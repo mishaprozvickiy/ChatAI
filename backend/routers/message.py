@@ -27,7 +27,7 @@ async def add_message(
 ) -> StreamingResponse:
 
     user_id = int(token_payload.sub)
-    answer_generator = MessageRepository.add_message(message.message, user_id, session)
+    answer_generator = MessageRepository.add_message(message.content, user_id, session)
     return StreamingResponse(answer_generator, media_type="text/plain")
 
 @router.delete("/clear")

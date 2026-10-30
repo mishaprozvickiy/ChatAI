@@ -9,7 +9,7 @@ class RoleEnum(Enum):
 
 
 class SMessageAdd(BaseModel):
-    message: str
+    content: str
 
 
 class SMessage(SMessageAdd):
