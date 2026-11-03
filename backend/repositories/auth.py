@@ -1,9 +1,9 @@
-from fastapi import Response, HTTPException, status
+from fastapi import Response
 from schemas.user import SUser, SUserAdd
 from models.user import UserOrm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from config import CREDS_EXCEPTION, USERNAME_EXISTS_EXCEPTION
+from config import CREDS_EXCEPTION, USERNAME_EXISTS_EXCEPTION, USER_NOT_FOUND_EXCEPTION
 from services.auth import security
 import bcrypt
 
@@ -81,6 +81,6 @@ class AuthRepository:
         username = result.scalar_one_or_none()
 
         if username is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+            raise USER_NOT_FOUND_EXCEPTION
 
         return {"status": "ok", "username": username}

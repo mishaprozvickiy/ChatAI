@@ -39,3 +39,14 @@ async def delete_chat(
     user_id = int(token_payload.sub)
     response = await MessageRepository.delete_chat(user_id, session)
     return response
+
+@router.patch("/update")
+async def update_message(
+        message: SMessageAdd,
+        token_payload: TokenPayload = Depends(security.access_token_required),
+        session: AsyncSession = Depends(get_session)
+) -> StreamingResponse:
+
+    user_id = int(token_payload.sub)
+    answer_generator = MessageRepository.update_message(message.content, user_id, session)
+    return StreamingResponse(answer_generator, media_type="text/plain")

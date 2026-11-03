@@ -1,10 +1,10 @@
-from sqlalchemy import select, delete, exists
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, timezone
 from models.message import MessageOrm
-from schemas.message import SMessage
+from schemas.message import SMessage, RoleEnum
 from bot import chatbot
-from config import FIRST_BOT_MESSAGE
+from config import UPDATE_EXCEPTION
 from typing import AsyncGenerator, Any
 
 
@@ -52,26 +52,42 @@ class MessageRepository:
             session: AsyncSession
     ) -> AsyncGenerator[str, None]:
 
-        date = datetime.now()
-        message_model = MessageOrm(user_id=user_id, role="user", content=message, date=date)
+        user_date = datetime.now(timezone.utc)
 
-        session.add(message_model)
-        await session.commit()
+        new_message = [
+            {
+                "role": RoleEnum.user,
+                "content": message
+            }
+        ]
 
-        messages = await cls.get_messages(user_id, session)
+        messages = await cls.get_messages(user_id, session) + new_message
         answer = ""
 
         async for part_answer in chatbot.ask(messages):
             yield part_answer
             answer += part_answer
 
-        date = datetime.now()
-        yield f"\n[DATE:{date}]"
+        assistant_date = datetime.now(timezone.utc)
+        yield f"\n[DATE:{assistant_date.isoformat()}]"
 
-        date = datetime.now()
-        message_model = MessageOrm(user_id=user_id, role="assistant", content=answer, date=date)
+        user_message_model = MessageOrm(
+            user_id=user_id,
+            role=RoleEnum.user,
+            content=message,
+            date=user_date
+        )
 
-        session.add(message_model)
+        assistant_message_model = MessageOrm(
+            user_id=user_id,
+            role=RoleEnum.assistant,
+            content=answer,
+            date=assistant_date
+        )
+
+        session.add(user_message_model)
+        session.add(assistant_message_model)
+
         await session.commit()
 
     @classmethod
@@ -84,26 +100,69 @@ class MessageRepository:
         query = delete(MessageOrm).where(MessageOrm.user_id == user_id)
         await session.execute(query)
         await session.commit()
-        await cls.add_first_message(session)
 
         return {"status": "ok"}
 
     @classmethod
-    async def add_first_message(
+    async def update_message(
             cls,
+            message: str,
+            user_id: int,
             session: AsyncSession
-    ) -> None:
+    ) -> AsyncGenerator[str, None]:
 
-        query = select(exists().where(MessageOrm.id.is_not(None)))
-        result = await session.execute(query)
+        query = (
+            select(MessageOrm.id)
+            .where(MessageOrm.user_id == user_id, MessageOrm.role == RoleEnum.user)
+            .order_by(MessageOrm.id.desc())
+            .limit(1)
+        )
 
-        have_records = result.scalar()
+        response = await session.execute(query)
+        message_id = response.scalar_one_or_none()
 
-        if have_records:
-            return
+        if not message_id:
+            raise UPDATE_EXCEPTION
 
-        date = datetime.now()
-        message_model = MessageOrm(role="assistant", message=FIRST_BOT_MESSAGE, date=date)
+        new_date = datetime.now(timezone.utc)
+        query = update(MessageOrm).where(MessageOrm.id == message_id).values(content=message, date=new_date)
+        await session.execute(query)
 
-        session.add(message_model)
+        query = (
+            select(MessageOrm)
+            .where(
+                MessageOrm.id > message_id,
+                MessageOrm.user_id == user_id,
+                MessageOrm.role == RoleEnum.assistant
+            )
+            .order_by(MessageOrm.id.asc())
+            .limit(1)
+        )
+
+        response = await session.execute(query)
+        assistant_message = response.scalar_one_or_none()
+
+        if assistant_message:
+            await session.delete(assistant_message)
+
+        await session.commit()
+
+        messages = await cls.get_messages(user_id, session)
+        answer = ""
+
+        async for part_answer in chatbot.ask(messages):
+            yield part_answer
+            answer += part_answer
+
+        assistant_date = datetime.now(timezone.utc)
+        yield f"\n[DATE:{assistant_date.isoformat()}]"
+
+        assistant_message_model = MessageOrm(
+            user_id=user_id,
+            role=RoleEnum.assistant,
+            content=answer,
+            date=assistant_date
+        )
+
+        session.add(assistant_message_model)
         await session.commit()

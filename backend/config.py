@@ -10,7 +10,6 @@ SYSTEM_PROMPT = "Ты полезный ассистент. " \
 
 MODEL = "qwen2.5:7b"
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-FIRST_BOT_MESSAGE = "Привет! Чем могу помочь?"
 
 CORS = ["*"]
 
@@ -22,8 +21,10 @@ JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 
 CREDS_EXCEPTION = HTTPException(status_code=401, detail="Incorrect login or password")
 MISSING_TOKEN_EXCEPTION = HTTPException(status_code=401, detail="Missing refresh or access token")
+USER_NOT_FOUND_EXCEPTION = HTTPException(status_code=401, detail="User not found")
 FORBIDDEN_EXCEPTION = HTTPException(status_code=403, detail="Access denied")
 RECORD_NOT_FOUND_EXCEPTION = HTTPException(status_code=404, detail="Record not found")
+UPDATE_EXCEPTION = HTTPException(status_code=404, detail="No messages to edit")
 USERNAME_EXISTS_EXCEPTION = HTTPException(status_code=409, detail="Username is already exists")
 
 ACCESS_TOKEN_LIFESPAN_MINUTES = 15
